@@ -53,7 +53,7 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
 # Routes pour Preferences
 # -----------------------
 
-@app.post("/preferences/", response_model=schemas.Preferences)
+@app.post("/preferences", response_model=schemas.Preferences)
 def create_preference(preference: schemas.PreferencesCreate, db: Session = Depends(get_db)):
     category = db.query(models.PreferencesCategory).get(preference.category_id)
     if not category:
@@ -68,7 +68,7 @@ def create_preference(preference: schemas.PreferencesCreate, db: Session = Depen
     db.refresh(new_pref)
     return new_pref
 
-@app.get("/preferences/", response_model=List[schemas.Preferences])
+@app.get("/preferences", response_model=List[schemas.Preferences])
 def list_preferences(db: Session = Depends(get_db)):
     return db.query(models.Preferences).all()
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     from database import Base, engine
     import models
 
-    # Crée les tables si elles n’existent pas
+    
     Base.metadata.create_all(bind=engine)
 
     import uvicorn
