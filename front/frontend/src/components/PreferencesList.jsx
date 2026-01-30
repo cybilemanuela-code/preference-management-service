@@ -1,36 +1,26 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
-/**
- * Liste des préférences d’une catégorie
- */
-function PreferencesList({ preferences, onAdd, onDelete, categoryId }) {
-  const [newPref, setNewPref] = useState("");
+function PreferencesList({ preferences, onAdd, onDelete }) {
+  const [newValue, setNewValue] = useState("");
 
-  function handleSubmit(e) {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    if (!newValue.trim()) return;
 
-    if (!newPref) return;
+    // ⚠️ Appelle la fonction onAdd avec la valeur saisie
+    onAdd(newValue);
 
-    onAdd({
-      name: newPref,
-      category_id: categoryId,
-    });
-
-    setNewPref("");
-  }
+    // Réinitialiser le champ
+    setNewValue("");
+  };
 
   return (
     <div>
-      <h2 className="text-lg font-bold mb-4">Préférences</h2>
-
-      <ul className="mb-4 space-y-2">
+      <h3 className="text-lg font-semibold mb-2">Préférences</h3>
+      <ul className="mb-4">
         {preferences.map((pref) => (
-          <li
-            key={pref.id}
-            className="flex justify-between items-center bg-gray-100 p-2 rounded"
-          >
-            <span>{pref.name}</span>
-
+          <li key={pref.id} className="flex justify-between items-center mb-2">
+            <span>{pref.value}</span>
             <button
               onClick={() => onDelete(pref.id)}
               className="text-red-500 hover:text-red-700"
@@ -41,19 +31,19 @@ function PreferencesList({ preferences, onAdd, onDelete, categoryId }) {
         ))}
       </ul>
 
-      {/* Formulaire ajout */}
+      {/* Formulaire pour ajouter une nouvelle préférence */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
-          value={newPref}
-          onChange={(e) => setNewPref(e.target.value)}
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
           placeholder="Nouvelle préférence"
-          className="flex-1 p-2 border rounded"
+          className="border border-gray-300 rounded px-2 py-1 flex-1"
         />
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 rounded"
+          className="bg-primaryBlue text-white px-4 py-1 rounded hover:bg-blue-600"
         >
           Ajouter
         </button>

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,13 +9,30 @@ from fastapi.middleware.cors import CORSMiddleware
 import models, schemas
 from database import get_db
 
+# -----------------------
+# Création de l'application FastAPI
+# -----------------------
 app = FastAPI(title="Preferences Management Service")
+
+# Middleware CORS pour autoriser le frontend (React, Vue, etc.)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5174"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# -----------------------
+# Router avec préfixe /api
+# -----------------------
+router = APIRouter(prefix="/api")
 
 # -----------------------
 # Routes pour PreferencesCategory
 # -----------------------
 
-@app.post("/categories/", response_model=schemas.PreferencesCategory)
+@router.post("/categories/", response_model=schemas.PreferencesCategory)
 def create_category(category: schemas.PreferencesCategoryCreate, db: Session = Depends(get_db)):
     db_category = db.query(models.PreferencesCategory).filter(models.PreferencesCategory.name == category.name).first()
     if db_category:
@@ -25,13 +43,13 @@ def create_category(category: schemas.PreferencesCategoryCreate, db: Session = D
     db.refresh(new_category)
     return new_category
 
-@app.get("/categories/", response_model=List[schemas.PreferencesCategory])
+@router.get("/categories/", response_model=List[schemas.PreferencesCategory])
 def list_categories(db: Session = Depends(get_db)):
     return db.query(models.PreferencesCategory).all()
 
-@app.put("/categories/{category_id}", response_model=schemas.PreferencesCategory)
+@router.put("/categories/{category_id}", response_model=schemas.PreferencesCategory)
 def update_category(category_id: int, category: schemas.PreferencesCategoryCreate, db: Session = Depends(get_db)):
-    db_category = db.query(models.PreferencesCategory).get(category_id)
+    db_category = db.get(models.PreferencesCategory, category_id)  # SQLAlchemy 2.x
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
     db_category.name = category.name
@@ -39,9 +57,9 @@ def update_category(category_id: int, category: schemas.PreferencesCategoryCreat
     db.refresh(db_category)
     return db_category
 
-@app.delete("/categories/{category_id}")
+@router.delete("/categories/{category_id}")
 def delete_category(category_id: int, db: Session = Depends(get_db)):
-    db_category = db.query(models.PreferencesCategory).get(category_id)
+    db_category = db.get(models.PreferencesCategory, category_id)
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
     db.delete(db_category)
@@ -53,9 +71,9 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
 # Routes pour Preferences
 # -----------------------
 
-@app.post("/preferences", response_model=schemas.Preferences)
+@router.post("/preferences/", response_model=schemas.Preferences)
 def create_preference(preference: schemas.PreferencesCreate, db: Session = Depends(get_db)):
-    category = db.query(models.PreferencesCategory).get(preference.category_id)
+    category = db.get(models.PreferencesCategory, preference.category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     new_pref = models.Preferences(
@@ -68,20 +86,20 @@ def create_preference(preference: schemas.PreferencesCreate, db: Session = Depen
     db.refresh(new_pref)
     return new_pref
 
-@app.get("/preferences", response_model=List[schemas.Preferences])
+@router.get("/preferences/", response_model=List[schemas.Preferences])
 def list_preferences(db: Session = Depends(get_db)):
     return db.query(models.Preferences).all()
 
-@app.get("/preferences/user/{user_id}", response_model=List[schemas.Preferences])
+@router.get("/preferences/user/{user_id}", response_model=List[schemas.Preferences])
 def list_user_preferences(user_id: int, db: Session = Depends(get_db)):
     return db.query(models.Preferences).filter(models.Preferences.user_id == user_id).all()
 
-@app.put("/preferences/{preference_id}", response_model=schemas.Preferences)
+@router.put("/preferences/{preference_id}", response_model=schemas.Preferences)
 def update_preference(preference_id: int, preference: schemas.PreferencesCreate, db: Session = Depends(get_db)):
-    db_pref = db.query(models.Preferences).get(preference_id)
+    db_pref = db.get(models.Preferences, preference_id)
     if not db_pref:
         raise HTTPException(status_code=404, detail="Preference not found")
-    category = db.query(models.PreferencesCategory).get(preference.category_id)
+    category = db.get(models.PreferencesCategory, preference.category_id)
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     db_pref.user_id = preference.user_id
@@ -91,9 +109,9 @@ def update_preference(preference_id: int, preference: schemas.PreferencesCreate,
     db.refresh(db_pref)
     return db_pref
 
-@app.delete("/preferences/{preference_id}")
+@router.delete("/preferences/{preference_id}")
 def delete_preference(preference_id: int, db: Session = Depends(get_db)):
-    db_pref = db.query(models.Preferences).get(preference_id)
+    db_pref = db.get(models.Preferences, preference_id)
     if not db_pref:
         raise HTTPException(status_code=404, detail="Preference not found")
     db.delete(db_pref)
@@ -102,21 +120,20 @@ def delete_preference(preference_id: int, db: Session = Depends(get_db)):
 
 
 # -----------------------
-# Point d’entrée Windows-safe
+# Point d’entrée
 # -----------------------
+app.include_router(router)
+
+@app.get("/")
+def root():
+    return {"message": "Bienvenue dans le Preferences Management Service API"}
+
 if __name__ == "__main__":
     from database import Base, engine
     import models
 
-    
+    # Crée les tables si elles n’existent pas
     Base.metadata.create_all(bind=engine)
 
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)
-    
-    app = FastAPI() 
-    app.add_middleware( CORSMiddleware, allow_origins=["http://localhost:3000"], # autorise ton frontend 
-    allow_credentials=True, 
-    allow_methods=["*"], 
-    allow_headers=["*"], 
-    )

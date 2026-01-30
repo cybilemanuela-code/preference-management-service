@@ -11,7 +11,7 @@ import {
 
 /**
  * App.jsx
- * 
+ *
  * Composant principal de l'application AURA
  * Gère l'affichage des catégories et préférences
  * Style moderne conforme aux guidelines (Tailwind CSS + Roboto)
@@ -21,46 +21,51 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [preferences, setPreferences] = useState([]);
 
+  // ⚠️ Pour l'instant, on fixe un user_id de test (ex: 1)
+  const userId = 1;
+
   // Charger les catégories au démarrage
   useEffect(() => {
-    const loadCategories = async () => {
+    async function loadCategories() {
       try {
         const data = await fetchCategories();
         setCategories(data);
       } catch (err) {
         console.error("Erreur lors du chargement des catégories :", err);
       }
-    };
+    }
     loadCategories();
   }, []);
 
-  // Charger les préférences quand la catégorie change
+  // Charger les préférences de l'utilisateur
   useEffect(() => {
-    const loadPreferences = async () => {
-      if (selectedCategory) {
-        try {
-          const data = await fetchPreferences(selectedCategory.id);
-          setPreferences(data);
-        } catch (err) {
-          console.error("Erreur lors du chargement des préférences :", err);
-        }
-      } else {
-        setPreferences([]);
+    async function loadPreferences() {
+      try {
+        const data = await fetchPreferences(userId); // ⚠️ backend attend user_id
+        setPreferences(data);
+      } catch (err) {
+        console.error("Erreur lors du chargement des préférences :", err);
       }
-    };
+    }
     loadPreferences();
-  }, [selectedCategory]);
+  }, [userId]);
 
   // Ajouter une préférence
-  async function handleAddPreference(data) {
-    try {
-      await addPreference(data);
-      const updated = await fetchPreferences(selectedCategory.id);
-      setPreferences(updated);
-    } catch (err) {
-      console.error("Erreur lors de l'ajout de la préférence :", err);
-    }
+ async function handleAddPreference(value) {
+  try {
+    await addPreference({
+      user_id: userId,                // ⚠️ fixe ou dynamique
+      category_id: selectedCategory.id,
+      value: value
+    });
+
+    const updated = await fetchPreferences(userId);
+    setPreferences(updated);
+  } catch (err) {
+    console.error("Erreur lors de l'ajout de la préférence :", err);
   }
+}
+
 
   // Supprimer une préférence
   async function handleDeletePreference(id) {
@@ -90,8 +95,8 @@ function App() {
           {/* Sélecteur de catégorie */}
           <CategorySelect
             categories={categories}
-            selectedId={selectedCategory}
-            onChange={setSelectedCategory}
+            selectedId={selectedCategory?.id}
+            onChange={(cat) => setSelectedCategory(cat)}
           />
 
           {/* Liste des préférences */}
